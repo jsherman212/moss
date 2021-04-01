@@ -1,6 +1,9 @@
+#include <stdarg.h>
 #include <stddef.h>
 
 #include <mmio.h>
+
+#include "doprnt.h"
 
 void uart_init(void){
     uint32_t gpfsel1 = rGPFSEL1;
@@ -81,4 +84,25 @@ void uart_puts(const char *s){
 
     uart_putc('\r');
     uart_putc('\n');
+}
+
+static void uart_printf_putc(char c, struct doprnt_info *info){
+    info->written++;
+    uart_putc(c);
+}
+
+int uart_printf(const char *fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+
+    struct doprnt_info di;
+    di.buf = NULL;
+    di.remaining = 99999999;
+    di.written = 0;
+
+    int w = doprnt(fmt, uart_printf_putc, &di, args);
+
+    va_end(args);
+
+    return w;
 }

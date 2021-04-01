@@ -6,9 +6,6 @@ moss is a bare-metal arm64 OS for the Raspberry Pi 4 model B.
 2. Add to config.txt:
 
 ```
-# Probably remove this so we can have contiguous mmio
-arm_peri_high=1
-
 # VC SDRAM - give it 256 MB. It will be mapped from 0x40000000 downward
 gpu_mem=256
 
