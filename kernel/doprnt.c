@@ -111,8 +111,11 @@ static void prnthex(uint8_t *bytes, size_t len, bool left_adjust,
                 digits[ndigits++] = one;
             }
 
-            if(two != '0'){
+            if(two != '0' && !first_nonzero){
                 first_nonzero = true;
+                digits[ndigits++] = two;
+            }
+            else if(first_nonzero){
                 digits[ndigits++] = two;
             }
         }
@@ -123,6 +126,13 @@ static void prnthex(uint8_t *bytes, size_t len, bool left_adjust,
         ndigits = 1;
 
     flagprocess(ndigits, left_adjust, zeroX, fieldwidth, prec, putc, di);
+
+    /* If there were flags, the 0x was already put */
+    if(zeroX && !left_adjust && !zero_pad && prec == -1 &&
+            fieldwidth == -1){
+        putc('0', di);
+        putc('x', di);
+    }
 
     if(prec == -1)
         prec = INT_MAX;
