@@ -7,7 +7,7 @@ struct doprnt_info {
     int written;
 };
 
-int doprnt(const char *, void (*)(char, void *), struct doprnt_info *,
-        va_list);
+int doprnt(const char *, void (*)(char, struct doprnt_info *),
+        struct doprnt_info *, va_list);
 
 #endif

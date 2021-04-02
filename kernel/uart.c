@@ -106,3 +106,12 @@ int uart_printf(const char *fmt, ...){
 
     return w;
 }
+
+int uart_vprintf(const char *fmt, va_list args){
+    struct doprnt_info di;
+    di.buf = NULL;
+    di.remaining = 99999999;
+    di.written = 0;
+
+    return doprnt(fmt, uart_printf_putc, &di, args);
+}

@@ -7,7 +7,7 @@
 #include "doprnt.h"
 
 static void flagprocess(size_t ndigits, bool left_adjust, bool zeroX,
-        int fieldwidth, int prec, void (*putc)(char, void *),
+        int fieldwidth, int prec, void (*putc)(char, struct doprnt_info *),
         struct doprnt_info *di){
     int needed_zeros = prec - ndigits;
     int needed_width = fieldwidth - ndigits;
@@ -45,7 +45,7 @@ static void flagprocess(size_t ndigits, bool left_adjust, bool zeroX,
 }
 
 static void prntnum(int64_t num, bool left_adjust, bool zero_pad,
-        int fieldwidth, int prec, void (*putc)(char, void *),
+        int fieldwidth, int prec, void (*putc)(char, struct doprnt_info *),
         struct doprnt_info *di){
     if(num < 0){
         putc('-', di);
@@ -88,7 +88,8 @@ static void prntnum(int64_t num, bool left_adjust, bool zero_pad,
 
 static void prnthex(uint8_t *bytes, size_t len, bool left_adjust,
         bool zero_pad, bool zeroX, int fieldwidth, int prec,
-        void (*putc)(char, void *), struct doprnt_info *di){
+        void (*putc)(char, struct doprnt_info *),
+        struct doprnt_info *di){
     const char *hex = "0123456789abcdef";
     bool first_nonzero = false;
     size_t ndigits = 0;
@@ -151,7 +152,8 @@ static void prnthex(uint8_t *bytes, size_t len, bool left_adjust,
 }
 
 static void prntflt(double num, bool left_adjust, int fieldwidth,
-        int prec, void (*putc)(char, void *), struct doprnt_info *di){
+        int prec, void (*putc)(char, struct doprnt_info *),
+        struct doprnt_info *di){
     if(num == 0){
         putc('0', di);
         putc('.', di);
@@ -238,7 +240,7 @@ static bool is_specifier(char c){
         c == 'p' || c == 'l' || c == 'f';
 }
 
-int doprnt(const char *fmt, void (*putc)(char, void *),
+int doprnt(const char *fmt, void (*putc)(char, struct doprnt_info *),
         struct doprnt_info *info, va_list args){
     if(info && info->remaining == 0)
         return 0;
