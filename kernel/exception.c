@@ -2,7 +2,6 @@
 #include <uart.h>
 
 #include "exception.h"
-#include "rstate.h"
 
 static const char *abort_fsc_str(uint32_t fsc){
     switch(fsc){
@@ -88,7 +87,7 @@ static void handle_svc(struct rstate *state, uint32_t iss){
     /* Check if the svc came from EL1 once I get userspace set up */
     /* panic_with_state(state, "svc"); */
 
-    uart_printf("%s: got SVC\n", __func__);
+    uart_printf("\r\n%s: trapped SVC instr\n", __func__);
 }
 
 static void handle_trapped_msr_mrs_sys(struct rstate *state,
@@ -208,12 +207,13 @@ void handle_sync_exc_1(struct rstate *state, uint32_t esr){
 
     uint64_t off;
 
-    off = __builtin_offsetof(struct rstate, x[7]);
-    off = __builtin_offsetof(struct rstate, x[15]);
-    off = __builtin_offsetof(struct rstate, x[29]);
+    /* off = __builtin_offsetof(struct rstate, x[7]); */
+    /* off = __builtin_offsetof(struct rstate, x[15]); */
+    /* off = __builtin_offsetof(struct rstate, x[29]); */
     off = __builtin_offsetof(struct rstate, lr);
     off = __builtin_offsetof(struct rstate, sp);
     off = __builtin_offsetof(struct rstate, pc);
+    off = __builtin_offsetof(struct rstate, cpsr);
     off = __builtin_offsetof(struct rstate, q[0]);
     off = sizeof(struct rstate);
 

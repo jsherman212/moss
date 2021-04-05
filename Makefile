@@ -8,6 +8,7 @@ ROOT_DIR = $(shell pwd)
 AS = $(PREFIX)-as
 CC = $(PREFIX)-gcc
 CFLAGS = -ffreestanding -nostdlib -nostartfiles -I$(ROOT_DIR)/include
+#CFLAGS += -Wa,-Ikernel -Wa,-Iinclude
 LD = $(PREFIX)-ld
 OBJCOPY = $(PREFIX)-objcopy
 
@@ -16,15 +17,14 @@ export CC
 export CFLAGS
 
 TARGET_DIRS = boot kernel
+OBJECT_FILES = $(shell find $(TARGET_DIRS) -type f -name "*.o")
 
 all : $(TARGET_DIRS) kernel8.img
 
-.PHONY : target_dirs $(TARGET_DIRS)
+.PHONY : $(OBJECT_FILES) target_dirs $(TARGET_DIRS)
 
 $(TARGET_DIRS) :
 	$(MAKE) -C $@
-
-OBJECT_FILES = $(shell find $(TARGET_DIRS) -type f -name "*.o")
 
 kernel8.img : $(OBJECT_FILES) linkscript.x
 	$(LD) -T ./linkscript.x $(OBJECT_FILES) -o $(BUILD_DIR)/kernel8.elf

@@ -8,6 +8,7 @@ struct rstate {
     uint64_t lr;
     uint64_t sp;
     uint64_t pc;
+    uint32_t cpsr;
     __uint128_t q[32];
 };
 

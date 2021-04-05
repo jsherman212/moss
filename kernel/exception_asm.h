@@ -1,0 +1,82 @@
+/* ss: pointer to free space to rstate structure, assumes
+    user has already saved x0/adjusted it to point to the
+    stack pointer before the exception happened */
+.macro SAVE_REGISTERS ss
+    str x1, [\ss, #0x8]
+    stp x2, x3, [\ss, #0x10]
+    stp x4, x5, [\ss, #0x20]
+    stp x6, x7, [\ss, #0x30]
+    stp x8, x9, [\ss, #0x40]
+    stp x10, x11, [\ss, #0x50]
+    stp x12, x13, [\ss, #0x60]
+    stp x14, x15, [\ss, #0x70]
+    stp x16, x17, [\ss, #0x80]
+    stp x18, x19, [\ss, #0x90]
+    stp x20, x21, [\ss, #0xa0]
+    stp x22, x23, [\ss, #0xb0]
+    stp x24, x25, [\ss, #0xc0]
+    stp x26, x27, [\ss, #0xd0]
+    stp x28, x29, [\ss, #0xe0]
+    stp x30, x0, [\ss, #0xf0]
+    mrs x0, elr_el1
+    str x0, [\ss, #0x100]
+    mrs x0, spsr_el1
+    str w0, [\ss, #0x108]
+    stp q0, q1, [\ss, #0x110]
+    stp q2, q3, [\ss, #0x130]
+    stp q4, q5, [\ss, #0x150]
+    stp q6, q7, [\ss, #0x170]
+    stp q8, q9, [\ss, #0x190]
+    stp q10, q11, [\ss, #0x1b0]
+    stp q12, q13, [\ss, #0x1d0]
+    stp q14, q15, [\ss, #0x1f0]
+    stp q16, q17, [\ss, #0x210]
+    stp q18, q19, [\ss, #0x230]
+    stp q20, q21, [\ss, #0x250]
+    stp q22, q23, [\ss, #0x270]
+    stp q24, q25, [\ss, #0x290]
+    stp q26, q27, [\ss, #0x2b0]
+    stp q28, q29, [\ss, #0x2d0]
+    stp q30, q31, [\ss, #0x2f0]
+.endm
+
+    /* ss: pointer to rstate structure, does not restore x0/x1
+    so we can use them as scratch registers to restore sp
+    right after eret */
+.macro RESTORE_REGISTERS ss
+    ldp x2, x3, [\ss, #0x10]
+    ldp x4, x5, [\ss, #0x20]
+    ldp x6, x7, [\ss, #0x30]
+    ldp x8, x9, [\ss, #0x40]
+    ldp x10, x11, [\ss, #0x50]
+    ldp x12, x13, [\ss, #0x60]
+    ldp x14, x15, [\ss, #0x70]
+    ldp x16, x17, [\ss, #0x80]
+    ldp x18, x19, [\ss, #0x90]
+    ldp x20, x21, [\ss, #0xa0]
+    ldp x22, x23, [\ss, #0xb0]
+    ldp x24, x25, [\ss, #0xc0]
+    ldp x26, x27, [\ss, #0xd0]
+    ldp x28, x29, [\ss, #0xe0]
+    ldr x30, [\ss, #0xf0]
+    ldr x0, [\ss, #0x100]
+    msr elr_el1, x0
+    ldr w0, [\ss, #0x108]
+    msr spsr_el1, x0
+    ldp q0, q1, [\ss, #0x110]
+    ldp q2, q3, [\ss, #0x130]
+    ldp q4, q5, [\ss, #0x150]
+    ldp q6, q7, [\ss, #0x170]
+    ldp q8, q9, [\ss, #0x190]
+    ldp q10, q11, [\ss, #0x1b0]
+    ldp q12, q13, [\ss, #0x1d0]
+    ldp q14, q15, [\ss, #0x1f0]
+    ldp q16, q17, [\ss, #0x210]
+    ldp q18, q19, [\ss, #0x230]
+    ldp q20, q21, [\ss, #0x250]
+    ldp q22, q23, [\ss, #0x270]
+    ldp q24, q25, [\ss, #0x290]
+    ldp q26, q27, [\ss, #0x2b0]
+    ldp q28, q29, [\ss, #0x2d0]
+    ldp q30, q31, [\ss, #0x2f0]
+.endm
