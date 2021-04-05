@@ -21,4 +21,5 @@ enable_uart=1
 ### Resources Used
 #### UART
 https://s-matyukevich.github.io/raspberry-pi-os/docs/lesson01/rpi-os.html
+
 https://isometimes.github.io/rpi4-osdev/part3-helloworld/

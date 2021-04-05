@@ -19,14 +19,19 @@ __attribute__ ((noreturn)) void _main(void *dtb32, void *x1, void *x2,
 
     /* uart_printf("%s: dtb32 = %p x1 = %p x2 = %p x3 = %p\n\r", __func__, */
     /*         dtb32, x1, x2, x3); */
-    uart_printf("about to trigger a data abort...\r\n");
+    uint64_t stk1 = 0x41414242;
+    uint64_t stk2 = 0x43435555;
+    uart_printf("about to trigger an svc... stk1 = %#llx stk2 = %#llx\r\n",
+            stk1, stk2);
 
     asm volatile("mov x0, #-0x1");
     asm volatile("mov x1, #0x4242");
     asm volatile("mov w3, #0x1");
     asm volatile("str w3, [x0]");
     /* asm volatile("svc 0x80"); */
-    uart_printf("Didn't crash???\r\n");
+    /* uart_printf("Didn't crash???\r\n"); */
+    /* uart_printf("\rback from svc... stk1 = %#llx stk2 = %#llx\r\n", */
+    /*         stk1, stk2); */
 
     for(;;){
         char input[0x200];

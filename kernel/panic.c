@@ -8,6 +8,8 @@
 static int g_panic_count = 0;
 
 static void nested_panic_check(void){
+    g_panic_count++;
+
     if(g_panic_count > 2){
         uart_printf("nested panic, stopping here...\n\r");
         spin_forever();
@@ -15,8 +17,6 @@ static void nested_panic_check(void){
 }
 
 __attribute__ ((noreturn)) void panic(const char *fmt, ...){
-    g_panic_count++;
-
     nested_panic_check();
 
     va_list args;
@@ -30,8 +30,6 @@ __attribute__ ((noreturn)) void panic(const char *fmt, ...){
 
 __attribute__ ((noreturn)) void panic_with_state(struct rstate *state,
         const char *fmt, ...){
-    g_panic_count++;
-
     nested_panic_check();
 
     va_list args;
@@ -49,7 +47,8 @@ __attribute__ ((noreturn)) void panic_with_state(struct rstate *state,
             uart_printf("\r\n\t");
     }
 
-    uart_printf("lr: 0x%-16.16llx\tsp: 0x%-16.16llx ", state->lr, state->sp);
+    uart_printf("lr: 0x%-16.16llx\tsp: 0x%-16.16llx\tpc: 0x%-16.16llx  ",
+            state->lr, state->sp, state->pc);
 
     uint64_t esr, far;
     asm volatile("mrs %0, esr_el1" : "=r" (esr));
