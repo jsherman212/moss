@@ -13,7 +13,7 @@ gpu_mem=256
 arm_64bit=1
 
 # load kernel at 0x0
-kernel_address=0
+#kernel_address=0
 
 enable_uart=1
 ```

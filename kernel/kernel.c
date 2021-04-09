@@ -6,75 +6,80 @@
 
 #include "asm.h"
 
+uint64_t transtest_read(uint64_t);
+uint64_t transtest_write(uint64_t);
+
+asm(".align 2\n"
+    "transtest_read:\n"
+    "at s1e1r, x0\n"
+    "isb sy\n"
+    "mrs x0, par_el1\n"
+    "ret\n"
+   );
+
+asm(".align 2\n"
+    "transtest_write:\n"
+    "at s1e1w, x0\n"
+    "isb sy\n"
+    "mrs x0, par_el1\n"
+    "ret\n"
+   );
+
+uint64_t read_tpidr_el1(void);
+
+asm(".align 2\n"
+    "read_tpidr_el1:\n"
+    "mrs x0, tpidr_el1\n"
+    "ret\n"
+   );
+
+uint64_t read_ttbr1_el1(void);
+
+asm(".align 2\n"
+    "read_ttbr1_el1:\n"
+    "mrs x0, ttbr1_el1\n"
+    "ret\n"
+   );
+
+static void transtests(void){
+    uart_printf("Translation test while in EL2 yielded %p\n\r", read_tpidr_el1());
+
+    uint64_t first_page = 0xffffff8000000000;
+
+    /* extern uint64_t kernel_level1_table[] asm("kernel_level1_table"); */
+
+    uint64_t kernel_level1_table = read_ttbr1_el1();
+    
+    uint64_t l1_idx = (first_page >> 30) & 0x1ff;
+    uint64_t *l1_ttep = (uint64_t *)((uint64_t)kernel_level1_table + (l1_idx * 8));
+
+    uart_printf("%s: l1 table at %p\n\r", __func__, kernel_level1_table);
+    uart_printf("%s: l1 idx %lld ttep %p tte %#llx\n\r", __func__, l1_idx,
+            l1_ttep, *l1_ttep);
+
+    uint64_t ttr = 0x41414141, ttw = 0x42424242;
+
+    ttr = transtest_read(first_page);
+    ttw = transtest_write(first_page);
+
+    uart_printf("%#llx: ttr %#llx ttw %#llx\n\r", first_page, ttr, ttw);
+}
+
 __attribute__ ((noreturn)) void _main(void *dtb32, void *arg1, void *arg2,
         void *arg3){
     uart_init();
     uart_puts("-------------");
     uart_printf("moss, on EL%d\n\r", getel());
 
-    /* uint64_t sctlr_el1, cpacr_el1; */
-    /* asm volatile("mrs %0, sctlr_el1" : "=r" (sctlr_el1)); */
-    /* asm volatile("mrs %0, cpacr_el1" : "=r" (cpacr_el1)); */
+    transtests();
 
-    /* uart_printf("sctlr_el1 %#llx cpacr_el1 %#llx\n\r", sctlr_el1, cpacr_el1); */
-
-    /* uart_printf("%s: dtb32 = %p x1 = %p x2 = %p x3 = %p\n\r", __func__, */
-    /*         dtb32, x1, x2, x3); */
-    uint64_t x0, x1, sp, spsel;
-    asm volatile("mov %0, x0" : "=r" (x0));
-    asm volatile("mov %0, x1" : "=r" (x1));
-    asm volatile("mov %0, sp" : "=r" (sp));
-    asm volatile("mrs %0, SPSel" : "=r" (spsel));
-    uint64_t stk1 = 0x41414242;
-    uint64_t stk2 = 0x43435555;
-    uart_printf("about to execute svc... stk1 = %#llx stk2 = %#llx\r\n",
-            stk1, stk2);
-    uart_printf("before: sp %#llx spsel %lld\n", sp, spsel);
-
-    asm volatile("mov x0, #-0x1");
-    asm volatile("mov x1, #0x4242");
-    asm volatile("mov w3, #0x1");
-    asm volatile("mov x4, #0x4345");
-    asm volatile("mov x5, #0x4345");
-    asm volatile("mov x6, #0x4345");
-    asm volatile("mov x7, #0x4345");
-    asm volatile("mov x8, #0x4345");
-    asm volatile("mov x9, #0x4345");
-    asm volatile("mov x10, #0x4345");
-    asm volatile("mov x11, #0x4345");
-    asm volatile("mov x12, #0x4345");
-    asm volatile("mov x13, #0x4345");
-    asm volatile("mov x14, #0x4345");
-    asm volatile("mov x15, #0x4345");
-    asm volatile("mov x16, #0x4345");
-    asm volatile("mov x17, #0x4345");
-    asm volatile("mov x18, #0x4345");
-    asm volatile("mov x19, #0x4345");
-    asm volatile("mov x20, #0x4345");
-    asm volatile("mov x21, #0x4345");
-    asm volatile("mov x22, #0x4345");
-    asm volatile("mov x23, #0x4345");
-    asm volatile("mov x24, #0x4345");
-    asm volatile("mov x25, #0x4345");
-    asm volatile("mov x26, #0x4345");
-    asm volatile("mov x27, #0x4345");
-    asm volatile("svc 0x80");
-
-    /* panic("test panic! stk1 = %llx stk2 = %llx\n", stk1, stk2); */
-    /* uart_printf("Didn't crash???\r\n"); */
-    uart_printf("\r\nback from svc... stk1 = %#llx stk2 = %#llx\r\n",
-            stk1, stk2);
-
-    asm volatile("mov %0, x0" : "=r" (x0));
-    asm volatile("mov %0, x1" : "=r" (x1));
-    asm volatile("mov %0, sp" : "=r" (sp));
-    asm volatile("mrs %0, SPSel" : "=r" (spsel));
-    /* uart_printf("after: x0 %#llx x1 %#llx sp %#llx\n", x0, x1, sp); */
-    uart_printf("after: sp %#llx spsel %lld\n", sp, spsel);
-
-    asm volatile("mov x0, #-1");
-    asm volatile("str w3, [x0]");
-
+    panic("test panic");
+    
+    uint64_t tcr_el1, id_aa64mmfr0_el1;
+    asm volatile("mrs %0, tcr_el1" : "=r" (tcr_el1));
+    asm volatile("mrs %0, id_aa64mmfr0_el1" : "=r" (id_aa64mmfr0_el1));
+    uart_printf("tcr %#llx id_aa64mmfr0_el1 %#llx\r\n",
+            tcr_el1, id_aa64mmfr0_el1);
 
     for(;;){
         char input[0x200];

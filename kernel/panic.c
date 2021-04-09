@@ -8,6 +8,7 @@
 static int g_panic_count = 0;
 
 static void nested_panic_check(void){
+    uart_printf("%s: panic count %d\r\n", __func__, g_panic_count);
     g_panic_count++;
 
     if(g_panic_count > 2){

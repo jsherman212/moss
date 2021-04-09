@@ -8,8 +8,9 @@ ROOT_DIR = $(shell pwd)
 AS = $(PREFIX)-as
 CC = $(PREFIX)-gcc
 CFLAGS = -ffreestanding -nostdlib -nostartfiles -I$(ROOT_DIR)/include
-#CFLAGS += -Wa,-Ikernel -Wa,-Iinclude
 LD = $(PREFIX)-ld
+LDFLAGS = -z max-page-size=4096 -z common-page-size=4096
+LDFLAGS += -T ./linkscript.x
 OBJCOPY = $(PREFIX)-objcopy
 
 export AS
@@ -27,6 +28,6 @@ $(TARGET_DIRS) :
 	$(MAKE) -C $@
 
 kernel8.img : $(OBJECT_FILES) linkscript.x
-	$(LD) -T ./linkscript.x $(OBJECT_FILES) -o $(BUILD_DIR)/kernel8.elf
+	$(LD) $(LDFLAGS) $(OBJECT_FILES) -o $(BUILD_DIR)/kernel8.elf
 	$(OBJCOPY) $(BUILD_DIR)/kernel8.elf -O binary $(BUILD_DIR)/kernel8.img
 	cp $(BUILD_DIR)/kernel8.img /media/psf/AllFiles/Volumes/boot/
