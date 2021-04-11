@@ -12,10 +12,9 @@ gpu_mem=256
 # armv8 kernel
 arm_64bit=1
 
-# load kernel at 0x0
-#kernel_address=0
-
 enable_uart=1
+
+core_freq_min=500
 ```
 
 ### Resources Used

@@ -13,6 +13,11 @@ getel:
     lsr x0, x0, #0x2
     ret
 
+.global read_ttbr1
+read_ttbr1:
+    mrs x0, ttbr1_el1
+    ret
+
 .global spin_forever
 spin_forever:
     b .

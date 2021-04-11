@@ -1,9 +1,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+#include <doprnt.h>
 #include <mmio.h>
-
-#include "doprnt.h"
 
 void uart_init(void){
     uint32_t gpfsel1 = rGPFSEL1;

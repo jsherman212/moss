@@ -56,16 +56,17 @@ SECTIONS {
 
     stacks_end = .;
 
-/* !!!!!!! PAGETABLES COLLIDE WITH VC SDRAM */
-    pagetables_start = .;
+    static_pagetables_start = .;
 
     /* Each entry here represents 1gb, in total one level 1 table
         represents 512gb. But we don't have that much kernel VA space
-        so one page for this is more than enough */
+        so one page for this is more than enough. */
     kernel_level1_table = .;
     . += 0x1000;
 
-    /* Each entry here represents 2mb */
+    /* Each entry here represents 2mb. Mapping the L2 tables that represent
+        kernel VA base to 0xffffffffffffffff only takes a couple of MB,
+        so to keep things simple, we'll keep doing that. */
     kernel_level2_table = .;
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) / 8; */
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x40000000) * 0x1000; */
@@ -74,18 +75,23 @@ SECTIONS {
     /*. += 0x1000;*/
     . = ALIGN(0x1000);
 
-    /* Each entry here represents 4kb */
+    /* Each entry here represents 4kb. However, if we map the pagetables
+        that map kernel VA base to 0xffffffffffffffff, that takes up 1GB,
+        which is such a huge waste of memory. Instead, I'm only mapping
+        the pagetables that map static regions of the kernel
+        (e.g. text,rodata,stacks, etc). If more L3 tables are needed
+        after kernel entrypoint is jumped to, the kernel handles it.
+        Page tables for device memory are at 0x40000000 */
     kernel_level3_table = .;
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x1000) / 8; */
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) * 0x1000; */
     /* Below for when we are not rebased to VA_KERNEL_BASE */
-    . += ((0xffffffffffffffff - 0xffffff8000000000) / 0x200000) * 0x1000;
-    /*. += 0x1000;*/
+    /*. += ((0xffffffffffffffff - 0xffffff8000000000) / 0x200000) * 0x1000;*/
+    /* +1 is to include the page when the divide evaluates to zero */
+    . += ((stacks_end / 0x200000) + 1) * 0x1000;
     . = ALIGN(0x1000);
 
-/* !!!!!!! PAGETABLES COLLIDE WITH VC SDRAM */
-
-    pagetables_end = .;
+    static_pagetables_end = .;
 
     kernel_end = .;
     kernel_heap_start = .;

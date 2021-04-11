@@ -1,6 +1,8 @@
 #ifndef DOPRNT
 #define DOPRNT
 
+#include <stddef.h>
+
 struct doprnt_info {
     char *buf;
     size_t remaining;

@@ -22,7 +22,7 @@ OBJECT_FILES = $(shell find $(TARGET_DIRS) -type f -name "*.o")
 
 all : $(TARGET_DIRS) kernel8.img
 
-.PHONY : $(OBJECT_FILES) target_dirs $(TARGET_DIRS)
+.PHONY : $(OBJECT_FILES) $(TARGET_DIRS)
 
 $(TARGET_DIRS) :
 	$(MAKE) -C $@
