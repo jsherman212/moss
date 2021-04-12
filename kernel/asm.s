@@ -21,3 +21,12 @@ read_ttbr1:
 .global spin_forever
 spin_forever:
     b .
+
+.global tlb_flush
+tlb_flush:
+    isb sy
+    dsb sy
+    tlbi vmalle1
+    dsb sy
+    isb sy
+    ret

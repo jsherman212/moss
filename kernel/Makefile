@@ -1,4 +1,4 @@
-TARGET_DIRS = libc
+TARGET_DIRS = libc vm
 
 ASM_SOURCES = $(wildcard *.s)
 C_SOURCES = $(wildcard *.c)

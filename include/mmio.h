@@ -8,8 +8,8 @@
 /* #define MMIO_BASE                   0xfc000000 */
 #define MMIO_VA_BASE                (0xffffff80fc000000)
 
-#define GPIO_BASE                   (0xfe200000)
-/* #define GPIO_BASE                   (MMIO_VA_BASE + 0xfe200000) */
+/* #define GPIO_BASE                   (0xfe200000) */
+#define GPIO_BASE                   (MMIO_VA_BASE + 0x2200000)
 
 #define rGPFSEL0                    *(volatile uint32_t *)(GPIO_BASE)
 #define rGPFSEL1                    *(volatile uint32_t *)(GPIO_BASE + 0x4)
@@ -26,8 +26,8 @@
 
 #define rGPIO_PUP_PDN_CNTRL_REG0    *(volatile uint32_t *)(GPIO_BASE + 0xe4)
 
-#define AUX_BASE                    (0xfe215000)
-/* #define AUX_BASE                    (MMIO_VA_BASE + 0x2215000) */
+/* #define AUX_BASE                    (0xfe215000) */
+#define AUX_BASE                    (MMIO_VA_BASE + 0x2215000)
 
 #define rAUX_IRQ                    *(volatile uint32_t *)(AUX_BASE)
 #define rAUX_ENABLES                *(volatile uint32_t *)(AUX_BASE + 0x4)

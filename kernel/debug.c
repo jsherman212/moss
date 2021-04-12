@@ -3,11 +3,10 @@
 #include <stdlib.h>
 
 #include <libc/string.h>
-
 #include <uart.h>
-
 #include <vm/vm_constants.h>
 #include <vm/vm_prot.h>
+#include <vm/vm.h>
 
 #include "asm.h"
 
@@ -40,9 +39,27 @@ static void apstr(uint64_t pte, char *s){
         s[6] = 'x';
 }
 
+void hexdump(void *, size_t);
+
 void dump_kva_space(void){
-    /* XXX need phystokv on this when MMU is enabled */
-    uint64_t l1_tbl = read_ttbr1();
+    uint64_t static_pte_start = 0xFFFFFF800000F000;
+    /* uint64_t static_pte_end = static_pte_start + 0x201000; */
+    uint64_t static_pte_end = 0xffffff8000209000;
+
+    /* while(static_pte_start < static_pte_end){ */
+    /*     uint64_t phys = kvtophys(static_pte_start); */
+    /*     uart_printf("%s: %#llx: phys=%#llx\r\n", __func__, static_pte_start, */
+    /*             phys); */
+    /*     static_pte_start += PAGE_SIZE; */
+    /* } */
+    /* return; */
+
+    uint64_t l1_tbl = linear_phystokv(read_ttbr1());
+    /* uart_printf("%s: ttbr1: %#llx\r\n", __func__, read_ttbr1()); */
+    /* uart_printf("%s: l1 table kva %#llx\r\n", __func__, l1_tbl); */
+    /* hexdump((void*)l1_tbl, PAGE_SIZE); */
+    /* hexdump((void*)(MIN_KERNEL_VA+0x80000), 0x100); */
+    /* return; */
     uint64_t curva = MIN_KERNEL_VA;
 
     /* Each L1 table entry handles 1GB */
@@ -50,7 +67,7 @@ void dump_kva_space(void){
         uint64_t l1_idx = (curva >> ARM_4K_L1_SHIFT) & ARM_4K_INDEX_MASK;
         uint64_t *l1_ttep = (uint64_t *)(l1_tbl + (l1_idx * 0x8));
 
-        uart_printf("[%#llx-%#llx): ", curva, (curva + 0x40000000) - 1);
+        uart_printf("[%#llx-%#llx): ", curva, curva + 0x40000000);
 
         if(*l1_ttep == ARM_TTE_EMPTY){
             uart_printf("1GB unmapped (empty L1 entry)\r\n");
@@ -59,15 +76,15 @@ void dump_kva_space(void){
         }
 
         /* Each L2 entry handles 2MB */
-
-        /* XXX need phystokv on this when MMU is enabled */
-        uint64_t curva_l2_tbl = *l1_ttep & ARM_4K_TABLE_MASK;
+        uint64_t curva_l2_tbl = linear_phystokv(*l1_ttep & ARM_4K_TABLE_MASK);
+        /* uart_printf("%s: cur l2 table %#llx\r\n", __func__, curva_l2_tbl); */
+        /* hexdump((void*)curva_l2_tbl, PAGE_SIZE); */
         uint64_t l2_end = curva + 0x40000000;
 
         uart_printf("\r\n");
 
         while(curva < l2_end){
-            uart_printf("\t[%#llx-%#llx): ", curva, (curva + 0x200000) - 1);
+            uart_printf("\t[%#llx-%#llx): ", curva, curva + 0x200000);
 
             uint64_t l2_idx = (curva >> ARM_4K_L2_SHIFT) & ARM_4K_INDEX_MASK;
             uint64_t *l2_ttep = (uint64_t *)(curva_l2_tbl + (l2_idx * 0x8));
@@ -93,14 +110,21 @@ void dump_kva_space(void){
                 continue;
             }
 
-            /* XXX need phystokv on this when MMU is enabled */
-            uint64_t curva_l3_tbl = *l2_ttep & ARM_4K_TABLE_MASK;
+            /* uart_printf("%s: l3 tbl phys %#llx\r\n", __func__, */
+            /*         *l2_ttep & ARM_4K_TABLE_MASK); */
+            uint64_t curva_l3_tbl = linear_phystokv(*l2_ttep & ARM_4K_TABLE_MASK);
+            /* curva_l3_tbl = 0xFFFFFF8000011000LL; */
+            /* curva_l3_tbl += 0x80000; */
+            /* uart_printf("%s: cur l3 table %#llx\r\n", __func__, curva_l3_tbl); */
+            /* hexdump((void *)curva_l3_tbl, PAGE_SIZE); */
             uint64_t l3_end = curva + 0x200000;
+
+            /* return; */
 
             uart_printf("\r\n");
 
             while(curva < l3_end){
-                uart_printf("\t\t[%#llx-%#llx): ", curva, (curva + PAGE_SIZE) - 1);
+                uart_printf("\t\t[%#llx-%#llx): ", curva, curva + PAGE_SIZE);
 
                 uint64_t l3_idx = (curva >> ARM_4K_L3_SHIFT) & ARM_4K_INDEX_MASK;
                 uint64_t *l3_ptep = (uint64_t *)(curva_l3_tbl + (l3_idx * 0x8));
@@ -122,7 +146,10 @@ void dump_kva_space(void){
                 curva += PAGE_SIZE;
             }
 
-            curva += 0x200000;
+            /* Round up to next 2MB boundry if not already a multiple
+             * of 2MB */
+            if(curva & 0x1fffff)
+                curva = (curva + 0x200000) & ~(0x200000 - 1);
         }
     }
 }

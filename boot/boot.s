@@ -28,41 +28,20 @@
 .set GPIO_BASE_PA, 0xfe200000
 .set AUX_BASE_PA,  0xfe215000
 
-    /* Early kvtophys before page tables are set up. Params:
-        va:    virtual address
-        outpa: returned physical address
-    */
-.macro early_kvtophys va, outpa
-    ldr \outpa, =VA_KERNEL_BASE
-    sub \outpa, \va, \outpa
-    add \outpa, \outpa, PA_KERNEL_BASE
-.endm
+.set static_pagetables_end_TEST,    0xffffff8000209000
+/*.set bad_pte_addr,                  0xffffff8000200000*/
+/*.set bad_pte_addr,                  0xffffff80001ff000*/
+.set bad_pte_addr,                  0xffffff8000200000
 
-    /* TODO Parameter setup will change once we are rebased to
-    VA_KERNEL_BASE */
-    /* Will have to call early_kvtophys once rebased to VA_KERNEL_BASE */
 .macro early_map_range start, end, prot, block, device
-    adrp x0, \start
-    bl _early_phystokv
-    adrp x1, \start
-    mov w2, \prot
-    mov w3, \block
-    adrp x4, \end
-    sub x4, x4, x1
-    mov w5, \device
-    mov x6, sp
-    bl _early_map_range 
-    ldr x19, [sp]
-.endm
-
-.macro early_map_range2 start, end, prot, block, device
     ldr x0, =\start
-    bl _early_phystokv
-    ldr x1, =\start
+    bl _early_kvtophys
+    mov x1, x0
+    ldr x0, =\start
     mov w2, \prot
     mov w3, \block
     ldr x4, =\end
-    sub x4, x4, x1
+    sub x4, x4, x0
     mov w5, \device
     mov x6, sp
     bl _early_map_range 
@@ -80,37 +59,93 @@ _start:
     and x5, x5, #0xff
     cbnz x5, Lnot_cpu0
 
-    adr x5, Lel1_entry
-
-    /* SPSR: mask all interrupts when we return to EL1 */
-    mov x6, #0x3c4
-
-    mrs x7, CurrentEL
-    lsr x7, x7, #0x2
-    cmp x7, #0x2
+    mrs x5, CurrentEL
+    lsr x5, x5, #0x2
+    cmp x5, #0x2
     b.eq Lel2_entry
+    /*
+    cmp x5, #0x3
+    b.eq Lel3_entry
+    */
     b Lnot_el2
 
+    /*
+Lel3_entry:
+    adr x5, Lel2_entry
+    msr elr_el3, x5
+    mov x5, #0x3c8
+    msr spsr_el3, x5
+    isb sy
+    eret
+    */
+
 Lel2_entry:
-    msr elr_el2, x5
-    msr spsr_el2, x6
+    mrs x5, CurrentEL
+    /* Give EL2 cpu0's stack and then bzero it before we eret */
+    /*adrp x5, cpu0_stack*/
+    adr x5, cpu0_stack
+    /*ldr x5, =cpu0_stack*/
+    add x5, x5, #0x1000
+    msr SPSel, #0
+    mov sp, x5
+    
+    mov x2, #0x4141
+
+    isb sy
+
+    /* Save boot parameters */
+    stp x0, x1, [sp, #-0x10]!
+    stp x2, x3, [sp, #-0x10]!
+
+    dmb sy
+    dsb sy
+    isb sy
+
+    /* TODO: elr has to be virtual? */
+    /*
+    mov x29, x0
+    mov x0, x5
+    bl _early_kvtophys
+    mov x5, x0
+    mov x0, x29
+    */
+
+    /*adr x0, Lel1_entry*/
+    ldr x0, =Lel1_entry
+    /*bl _early_kvtophys*/
+    msr elr_el2, x0
+    /*msr elr_el3, x0*/
+
+    /* SPSR: mask all interrupts when we return to EL1 */
+    mov x0, #0x3c4
+    msr spsr_el2, x0
+    /*msr spsr_el3, x0*/
 
     /* EL1 is AArch64 */
-    mov x5, #(1 << 31)
-    msr hcr_el2, x5
+    mov x0, #(1 << 31)
+    msr hcr_el2, x0
 
-    /* Enable floating point */
-    mrs x5, cpacr_el1
-    orr x5, x5, #0x300000
-    msr cpacr_el1, x5
+    /* Enable floating point for EL1 */
+    mrs x0, cpacr_el1
+    orr x0, x0, #0x300000
+    msr cpacr_el1, x0
 
-    /* Set exception vector before attempting any loads/stores */
-    adr x5, ExceptionVectorsBase
-    msr vbar_el1, x5
+    /* Enable floating point for EL2 */
+    /*
+    mrs x0, cptr_el2
+    orr x0, x0, #0x300000
+    msr cptr_el2, x0
+    */
+
+    isb sy
+
+    /*adr x0, ExceptionVectorsBase*/
+    ldr x0, =ExceptionVectorsBase
+    msr vbar_el1, x0
 
     /* AttrIdx 0 is normal memory, AttrIdx 1 is device memory */
-    mov x5, #0xff
-    msr mair_el1, x5
+    mov x0, #0xff
+    msr mair_el1, x0
 
     /* Set up page tables for EL1 inside EL2 so we don't have to deal with
     creating an identity mapping. We are using a 4k page size. T1SZ/T0SZ
@@ -124,36 +159,39 @@ Lel2_entry:
         - SH0: 0
         - T0SZ: 25
     */
-    mov x5, #0x19
-    movk x5, #0x8019, lsl #16
-    msr tcr_el1, x5
-
-    /* Give EL2 cpu0's stack and then bzero it before we eret */
-    adrp x5, cpu0_stack
-    add x5, x5, #0x1000
-    msr SPSel, #0
-    mov sp, x5
-
-    isb sy
-
-    /* Save boot parameters */
-    stp x0, x1, [sp, #-0x10]!
-    stp x2, x3, [sp, #-0x10]!
+    mov x0, #0x19
+    movk x0, #0x8019, lsl #16
+    msr tcr_el1, x0
 
     /*b Leret_to_el1*/
 
-    adr x19, kernel_level1_table
-    adrp x20, kernel_level2_table
-    adrp x21, kernel_level3_table
-    adrp x22, stacks_end
-
+    /* We zero out all L1 and L2, but only some of L3. We don't need to zero
+    out all of L3 because we should not be trying to map over existing
+    L3 entries this early on */
     adrp x0, static_pagetables_start
     adrp x1, static_pagetables_end
     sub x1, x1, x0
-    bl _bzero_64
+    /*
+    adrp x2, static_pagetables_start
+    ldr x0, =static_pagetables_end_TEST
+    bl _early_kvtophys
+    mov x1, x0
+    mov x0, x2
+    sub x1, x1, x0
+    */
 
-    /* TODO will need to be a phys address when rebased to VA_KERNEL_BASE */
-    /* Pointer to current L3 table */
+    /* TODO Too slow on qemu */
+    bl _bzero_64
+    /*bl _bzero_8*/
+    /*bl _bzero*/
+
+    /*
+    dsb sy
+    isb sy
+    */
+
+    /* Pointer to current L3 table, must be x19 for the
+    early_map_range macro */
     adrp x19, kernel_level3_table
     str x19, [sp, #-0x10]!
     
@@ -166,38 +204,103 @@ Lel2_entry:
     early_map_range bss_start bss_end VM_PROT_READ|VM_PROT_WRITE 0 0
     early_map_range stacks_start stacks_end VM_PROT_READ|VM_PROT_WRITE 0 0
 
-    /* Everything mapped before this point was contiguous. Now we're
-    jumping like 3GB forward to map device memory, so re-initialize
-    the L3 table pointer. TODO: need to save whereever L3 table pointer
-    left off before this as well as after this so the kernel can
-    figure out which phys pages are free */
-
-    /* Beginning of device memory L3 table will be at 0x40000000 */
-    /* TODO: wont be needed once I get this working with L2 block mappings */
+    /* Now we gotta map the pagetables that map text to the end
+    of stacks so we can create new virtual mappings after the MMU has
+    been enabled. We need the first L3 table for these pagetables to
+    bzero the region */
     /*
-    mov x19, #0x1
-    lsl x19, x19, #30
-    str x19, [sp]
+    adrp x0, static_pagetables_start
+    adr x1, kernel_level1_table
+    adr x2, kernel_level2_table
 
-    mov x0, x19
-    mov x1, #0x4000000
-    bl _bzero_64
+
+    lsr x1, x0, L1_SHIFT
+    and x1, x1, INDEX_MASK
+    add x2, x1, 
     */
 
-    early_map_range2 PA_DEVICE_MEMORY_BASE PA_DEVICE_MEMORY_END VM_PROT_READ|VM_PROT_WRITE 1 1
+    /* TODO: update l3 pointer on the stack */
+
+
+    /* Map the pagetables for static kernel memory so we can create
+    new mappings after the MMU is enabled. The pagetables end up being
+    some ways away from the ones that map text, rodata, etc, so we
+    need to calculate where they'll be so we can bzero that region */
+
+    /*
+    ldr x0, =static_pagetables_start
+    bl _early_kvtophys
+    mov x1, x0
+    ldr x0, =static_pagetables_start
+    mov w2, #(VM_PROT_READ | VM_PROT_WRITE)
+    mov w3, wzr
+    ldr x4, =static_pagetables_end
+    sub x4, x4, x0
+    lsr x4, x4, #0x3
+    add x4, x4, PAGE_SIZE
+    and x4, x4, #~(PAGE_SIZE - 1)
+    mov w5, wzr
+    mov x6, sp
+    bl _early_map_range 
+    ldr x19, [sp]
+    */
+
+    /*
+    ldr x19, [sp]
+    add x19, x19, PAGE_SIZE
+    and x19, x19, #~(PAGE_SIZE - 1)
+    str x19, [sp]
+    */
+
+    /*early_map_range kernel_level1_table kernel_level2_table VM_PROT_READ|VM_PROT_WRITE 0 0*/
+    early_map_range kernel_level1_table kernel_level2_table VM_PROT_READ 0 0
+
+    /*
+    ldr x19, [sp]
+    add x19, x19, PAGE_SIZE
+    and x19, x19, #~(PAGE_SIZE - 1)
+    str x19, [sp]
+    */
+
+    /*early_map_range kernel_level2_table kernel_level3_table VM_PROT_READ|VM_PROT_WRITE 0 0*/
+    early_map_range kernel_level2_table kernel_level3_table VM_PROT_READ|VM_PROT_WRITE 0 0
+
+    ldr x0, =kernel_level3_table
+    bl _early_kvtophys
+    mov x1, x0
+    ldr x0, =kernel_level3_table
+    mov w2, #(VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE)
+    mov w3, wzr
+    /* Add an extra page to the current L3 table so we take into account
+    PTEs that are on the current L3 page. Otherwise, those would stay
+    unmapped */
+    add x19, x19, PAGE_SIZE
+    and x19, x19, #~(PAGE_SIZE - 1)
+    sub x4, x19, x1
+    mov w5, wzr
+    mov x6, sp
+    bl _early_map_range 
+    ldr x19, [sp]
+
+    /*early_map_range static_pagetables_start static_pagetables_end VM_PROT_READ|VM_PROT_WRITE 0 0*/
+
+    /*early_map_range static_pagetables_start static_pagetables_end_TEST VM_PROT_READ|VM_PROT_WRITE 0 0*/
+
+    /* We map device memory as 2MB L2 blocks to save space */
+    early_map_range VA_DEVICE_MEMORY_BASE VA_DEVICE_MEMORY_END VM_PROT_READ|VM_PROT_WRITE 1 1
 
     dsb sy
     isb sy
 
-    /* We do not map page tables. Doesn't really make sense to, since
-    they don't change all the time, and TTEs output physical addresses
-    to next level tables. If a PTE needs to be changed we can always
-    just map the page its on, change it, then unmap */
+    adr x0, kernel_level1_table
+    msr ttbr1_el1, x0
 
-    adr x5, kernel_level1_table
-    /* early_kvtophys only when we start at 0xffffff8000000000 in linkscript */
-    /*early_kvtophys x5, x5*/
-    msr ttbr1_el1, x5
+    /*
+    adrp x0, kernel_level3_table
+    msr tpidr_el1, x0
+    bl _early_phystokv
+    msr tpidr_el0, x0
+    */
 
     dsb sy
     isb sy
@@ -206,7 +309,7 @@ Lel2_entry:
 
 Leret_to_el1:
     /* Enable caches, instruction cache, SP alignment checking,
-    and WXN, but not the MMU yet */
+    WXN, and MMU for address translation inside EL1 */
     /*mov x5, #0x100c*/
     mov x5, #0x100d
     orr x5, x5, #(1 << 19)
@@ -216,6 +319,11 @@ Leret_to_el1:
     isb sy
     tlbi vmalle1
     isb sy
+
+    /*
+    mov x0, #0x4000
+    msr vbar_el3, x0
+    */
 
     /*ldr x0, =VA_KERNEL_BASE*/
     /*adrp x0, text_start*/
@@ -228,11 +336,11 @@ Leret_to_el1:
     /*ldr x0, =PA_DEVICE_MEMORY_BASE*/
     /*ldr x0, =GPIO_BASE_PA*/
     /*ldr x0, =AUX_BASE_PA*/
+    /*
     mov x0, #0x80000
     movk x0, #0x5000
     bl _early_phystokv
     msr tpidr_el0, x0
-    /*add x0, x0, #0x1000*/
     bl _transtest_read
     msr tpidr_el1, x0
 
@@ -246,22 +354,34 @@ Leret_to_el1:
     isb sy
     tlbi vmalle1
     isb sy
+    */
+
+    /*ldr x0, =GPIO_BASE_PA*/
+    /*ldr x0, =stacks_start*/
+    /*ldr x0, =VA_DEVICE_MEMORY_BASE*/
+    /*
+    ldr x0, =bad_pte_addr
+    bl _early_kvtophys
+    msr tpidr_el0, x0
+    ldr x0, =bad_pte_addr
+    bl _transtest_read
+    msr tpidr_el1, x0
+    */
 
     /* Free the space used for current L3 table pointer */
     add sp, sp, #0x10
 
     /* Restore boot parameters */
-    ldp x0, x1, [sp], #0x10
     ldp x2, x3, [sp], #0x10
+    ldp x0, x1, [sp], #0x10
 
     /* TODO Need to bzero unused phys (start from static pagetables end
-    and go to the start of VC SDRAM, then the region after VC SDRAM */
+    and go to the start of VC SDRAM, then the region after VC SDRAM) */
 
-    /* TODO this eret will cause a panic since el1_entry is still
-    a physical address */
     eret
 
 Lel1_entry:
+    mrs x5, CurrentEL
     adr x5, cpu0_exception_stack
     add x5, x5, #0x1000
     msr SPSel, #1
@@ -334,12 +454,29 @@ Lzero_loop:
     b.ne Lzero_loop
     ret
 
+_bzero_8:
+    add x1, x0, x1
+Lzero_loop_8:
+    str xzr, [x0], #0x8
+    cmp x0, x1
+    b.ne Lzero_loop_8
+    ret
+
 _bzero_16:
-    add x2, x0, x1
+    add x1, x0, x1
 Lzero_loop_16:
     stp xzr, xzr, [x0], #0x10
-    cmp x0, x2
+    cmp x0, x1
     b.ne Lzero_loop_16
+    ret
+
+_bzero_32:
+    movi v0.2d, #0
+    add x2, x0, x1
+Lzero_loop_32:
+    stp q0, q0, [x0], #0x20
+    cmp x0, x2
+    b.ne Lzero_loop_32
     ret
 
 _bzero_64:
@@ -397,6 +534,9 @@ Lvm_prot_to_tte_prot_done:
     The version here does not work when the MMU is enabled since
     we deal exclusively with physical memory in EL2.
 
+    This doesn't check for duplicate L3 entries since we're mapping
+    static kernel memory.
+
     Parameters:
         x0: virtual address
         x1: physical address
@@ -426,15 +566,6 @@ _early_map_page:
     /* Return value */
     mov w25, wzr
 
-    /* Prep: from this point forward:
-        x4: physical address of start of level 1 table
-        x5: physical address of start of level 2 table
-    TODO when we are rebased to 0xffffff8000000000 we need to do
-    early_kvtophys on the above two registers
-        x6: execute permission flag
-        x7 - x23: scratch registers
-    */
-
     adr x4, kernel_level1_table
     adrp x5, kernel_level2_table
 
@@ -445,29 +576,11 @@ _early_map_page:
     mov w0, w21
     mov x1, sp
     bl _vm_prot_to_tte_prot
-    mov w2, w0
-    ldr w6, [sp], #0x10
+    mov x21, x0
+    ldr x26, [sp], #0x10
 
     /* w2 == TTE protections
        w6 == PXN bit
-    */
-
-    /*
-    mov w6, #0x1
-    tbz w2, #VM_PROT_EXECUTE_BIT, Lset_rw_perms
-
-Lx:
-    mov w6, wzr
-
-Lset_rw_perms:
-    tbz w2, #VM_PROT_WRITE_BIT, Lro
-
-Lrw:
-    mov w2, wzr
-    b Lget_l1_entry
-
-Lro:
-    mov w2, #0x2
     */
 
 Learly_map_page_get_l1_entry:
@@ -508,6 +621,9 @@ Learly_map_page_make_l1_entry:
     /* Write the entry to the L1 table */
     str x7, [x4]
 
+    dsb sy
+    isb sy
+
     mov x8, x7
 
 Learly_map_page_get_l2_entry:
@@ -525,11 +641,11 @@ Learly_map_page_make_l2_entry:
     /* It's harder to figure out the address of the correct L3 table
     to use because the kernel virtual address space covers more than
     1 GB. To solve this problem, I pass a pointer to the current L3
-    table to this function as an argument so we can go off of that. x8
-    points to the L2 table index. */
+    table to this function as an argument so we can go off of that
+    inside x3. */
     mov x7, x3
 
-    /* Upper table attributes are res0 for stage 2 */
+    /* Upper table attributes are res0 for level 2 */
 
     /* x7 == base of current L3 table, now we can form the L2 table entry */
 
@@ -539,6 +655,9 @@ Learly_map_page_make_l2_entry:
     /* Write the entry to the L2 table */
     str x7, [x8]
 
+    dsb sy
+    isb sy
+
     mov x9, x7
 
 Learly_map_page_get_l3_entry:
@@ -547,9 +666,22 @@ Learly_map_page_get_l3_entry:
     and x7, x7, INDEX_MASK
     and x9, x9, TABLE_MASK
     add x9, x9, x7, lsl #0x3
+
     ldr x10, [x9]
-    /* Already a valid L3 entry? */
+
+    ldr x27, =bad_pte_addr
+    cmp x19, x27
+    /*b.ne Lnormal*/
+    b.ne Learly_map_page_make_l3_entry
+
+Lset_tpidrs:
+    msr tpidr_el0, x9
+    msr tpidr_el1, x10
+
+    /*
+Lnormal:
     tbnz x10, #0, Learly_map_done
+    */
 
 Learly_map_page_make_l3_entry:
     /* Since this is the last level, and we already have the physical
@@ -564,7 +696,7 @@ Learly_map_page_make_l3_entry:
     orr x10, x10, x11
 
     /* Set PXN bit */
-    lsl x11, x6, #53
+    lsl x11, x26, #53
     orr x10, x10, x11
 
     /* Set access flag, otherwise we'd fault the first time we do
@@ -574,7 +706,7 @@ Learly_map_page_make_l3_entry:
     /* SH bits are zero, intentionally */
 
     /* Set AP bits */
-    lsl x11, x2, #6
+    lsl x11, x21, #6
     orr x10, x10, x11
 
     /* Set NS bit */
@@ -643,6 +775,16 @@ _early_map_block:
 
     adr x10, kernel_level1_table
     adrp x11, kernel_level2_table
+
+    /*
+    adr x0, kernel_level1_table
+    bl _early_kvtophys
+    mov x10, x0
+
+    adrp x0, kernel_level2_table
+    bl _early_kvtophys
+    mov x11, x0
+    */
 
 Learly_map_block_get_l1_entry:
     lsr x12, x19, L1_SHIFT
@@ -794,16 +936,27 @@ _early_map_range:
     mov w25, w5
     mov x26, x6
 
-    /* Figure out how many entries are currently in this L3 table */
     ldr x8, [x26]
 
+    /* If we're about to map 2MB via a new page of L3, we need to make
+    sure to zero that page first */
+    ands xzr, x19, #0x1fffff
+    b.eq Lzero_out_new_l3
+    b Lfind_empty_l3_entry
+
+Lzero_out_new_l3:
+    mov x0, x8
+    mov x1, PAGE_SIZE
+    bl _bzero_64
+
+    /* Figure out how many entries are currently in this L3 table */
 Lfind_empty_l3_entry:
     ldr x9, [x8], #0x8
     cmp x9, xzr
     b.ne Lfind_empty_l3_entry
 
-    /*and x8, x8, #0xff*/
     /* pageoff/8 will give us the index of the first empty entry */
+    sub x8, x8, #0x8
     and x8, x8, #0xfff
     lsr x8, x8, #3
     str x8, [sp, #-0x10]!
@@ -832,7 +985,12 @@ Ladjust_l3_table_ptr:
     add x8, x8, #0x1000
     str x8, [x26]
 
-    /* We are starting on a new page of L3, so reset the counter */
+    /* We are starting on a new page of L3, so reset the counter and
+    zero it out */
+    mov x0, x8
+    mov x1, PAGE_SIZE
+    bl _bzero_64
+
     str xzr, [sp]
 
 Lnextpageprep:
@@ -855,6 +1013,13 @@ Learly_map_range_done:
 _early_phystokv:
     ldr x1, =VA_KERNEL_BASE
     add x0, x1, x0
+    ret
+
+    /* This can only clobber x1!!! */
+_early_kvtophys:
+    ldr x1, =VA_KERNEL_BASE
+    sub x1, x0, x1
+    add x0, x1, PA_KERNEL_BASE
     ret
 
 _transtest_read:

@@ -51,10 +51,13 @@ asm(".align 2\n"
 /*    ); */
 
 static void transtests(void){
-    uart_printf("Hello\n\r");
-    uint64_t addr = read_tpidr_el0();
-    uart_printf("Translation test while in EL2 for %#llx "
-            "yielded %p\n\r", addr, read_tpidr_el1());
+    /* uart_printf("Hello\n\r"); */
+    uint64_t a1 = read_tpidr_el0();
+    uint64_t a2 = read_tpidr_el1();
+    uart_printf("%s: a1 %#llx a2 %#llx\r\n", __func__, a1, a2);
+
+    /* uart_printf("Translation test while in EL2 for %#llx " */
+    /*         "yielded %p\n\r", addr, read_tpidr_el1()); */
 
     /* addr = 0xffffff8000084000; */
 
@@ -104,9 +107,11 @@ __attribute__ ((noreturn)) void _main(void *dtb32, void *arg1, void *arg2,
     uart_puts("-------------");
     uart_printf("moss, on EL%d\n\r", getel());
 
+    /* panic("test panic before calling transtests\r\n"); */
+
     transtests();
 
-    panic("test panic");
+    panic("test panic\r\n");
     
     uint64_t tcr_el1, id_aa64mmfr0_el1;
     asm volatile("mrs %0, tcr_el1" : "=r" (tcr_el1));

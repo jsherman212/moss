@@ -1,10 +1,9 @@
 SECTIONS {
     /* Kernel is mapped from VA 0xffffff8000000000 upward once the MMU
         enable bit is set in SCTLR_EL1 */
-    /* . = 0xffffffc000000000; */
-    /* . = 0xffffff8000000000; */
+    . = 0xffffff8000000000;
 /* Keep at 0 for testing */
-    . = 0x0;
+    /* . = 0x0; */
 
     kernel_begin = .;
 
@@ -27,9 +26,6 @@ SECTIONS {
     .bss : { *(.bss*) }
     . = ALIGN(0x1000);
     bss_end = .;
-
-    /* Allocate space for stacks, page tables, etc */
-    /*. = ALIGN(0x1000);*/
 
     stacks_start = .;
 
@@ -59,8 +55,8 @@ SECTIONS {
     static_pagetables_start = .;
 
     /* Each entry here represents 1gb, in total one level 1 table
-        represents 512gb. But we don't have that much kernel VA space
-        so one page for this is more than enough. */
+        represents 512gb, which is exactly how much kernel VA space
+        we have */
     kernel_level1_table = .;
     . += 0x1000;
 
@@ -70,8 +66,9 @@ SECTIONS {
     kernel_level2_table = .;
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) / 8; */
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x40000000) * 0x1000; */
+    . += ((0xffffffffffffffff - kernel_begin) / 0x40000000) * 0x1000;
     /* Below for when we are not rebased to VA_KERNEL_BASE */
-    . += ((0xffffffffffffffff - 0xffffff8000000000) / 0x40000000) * 0x1000;
+    /* . += ((0xffffffffffffffff - 0xffffff8000000000) / 0x40000000) * 0x1000; */
     /*. += 0x1000;*/
     . = ALIGN(0x1000);
 
@@ -79,16 +76,19 @@ SECTIONS {
         that map kernel VA base to 0xffffffffffffffff, that takes up 1GB,
         which is such a huge waste of memory. Instead, I'm only mapping
         the pagetables that map static regions of the kernel
-        (e.g. text,rodata,stacks, etc). If more L3 tables are needed
-        after kernel entrypoint is jumped to, the kernel handles it.
-        Page tables for device memory are at 0x40000000 */
+        (e.g. text,rodata,stacks,static ptes etc). If more L3 tables are
+        needed after kernel entrypoint is jumped to, the kernel handles it.
+
+        This intentionally only takes into account the contiguous region
+        text - end of stacks represents */
     kernel_level3_table = .;
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x1000) / 8; */
     /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) * 0x1000; */
     /* Below for when we are not rebased to VA_KERNEL_BASE */
     /*. += ((0xffffffffffffffff - 0xffffff8000000000) / 0x200000) * 0x1000;*/
     /* +1 is to include the page when the divide evaluates to zero */
-    . += ((stacks_end / 0x200000) + 1) * 0x1000;
+    . += (((stacks_end - kernel_begin) / 0x200000) + 1) * 0x1000;
+    /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) * 0x1000; */
     . = ALIGN(0x1000);
 
     static_pagetables_end = .;
