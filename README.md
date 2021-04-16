@@ -13,8 +13,6 @@ gpu_mem=256
 arm_64bit=1
 
 enable_uart=1
-
-core_freq_min=500
 ```
 
 ### Features

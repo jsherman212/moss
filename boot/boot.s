@@ -40,6 +40,35 @@
     ldr x19, [sp]
 .endm
 
+.macro CLEAR_X5_TO_X30
+    mov x5, xzr
+    mov x6, xzr
+    mov x7, xzr
+    mov x8, xzr
+    mov x9, xzr
+    mov x10, xzr
+    mov x11, xzr
+    mov x12, xzr
+    mov x13, xzr
+    mov x14, xzr
+    mov x15, xzr
+    mov x16, xzr
+    mov x17, xzr
+    mov x18, xzr
+    mov x19, xzr
+    mov x20, xzr
+    mov x21, xzr
+    mov x22, xzr
+    mov x23, xzr
+    mov x24, xzr
+    mov x25, xzr
+    mov x26, xzr
+    mov x27, xzr
+    mov x28, xzr
+    mov x29, xzr
+    mov x30, xzr
+.endm
+
 .section .text
 .align 2
 
@@ -185,16 +214,18 @@ Lel2_entry:
     bl _early_phystokv
     mov x19, x0
 
+    ldr x0, =g_bootargs
+    bl _early_kvtophys
+    mov x20, x0
+
     /* Restore original boot parameters */
     ldp x2, x3, [sp], #0x10
     ldp x0, x1, [sp], #0x10
 
-    /* Create boot args for EL1, and stash them in tpidr_el1 */
-    sub sp, sp, #0x30
-
+    /* Create boot args for EL1 */
     ldr x4, =text_start
-    stp x0, x4, [sp]
-    stp xzr, x19, [sp, #0x10]
+    stp x0, x4, [x20]
+    stp xzr, x19, [x20, #0x10]
 
     /* After current page of L3 is free physical memory */
     add x19, x19, PAGE_SIZE
@@ -202,12 +233,9 @@ Lel2_entry:
 
     mov x0, x19
     bl _early_kvtophys
-    str x0, [sp, #0x20]
+    str x0, [x20, #0x20]
 
-    mov x0, sp
-    bl _early_phystokv
-    msr tpidr_el1, x0
-
+    dsb sy
     isb sy
 
     eret
@@ -220,9 +248,6 @@ Lel1_entry:
 
     adr x5, cpu0_stack
     add x5, x5, #0x1000
-
-    /* Don't overwrite the bootargs */
-    sub x5, x5, #0x30
     msr SPSel, #0
     mov sp, x5
 
@@ -239,48 +264,25 @@ Lel1_entry:
     ldp xzr, x1, [sp], #0x10
     ldp x2, x3, [sp], #0x10
 
-    mrs x0, tpidr_el1
-    msr tpidr_el1, xzr
+    ldr x0, =g_bootargs
+
+    CLEAR_X5_TO_X30
 
     isb sy
-
-    mov x5, xzr
-    mov x6, xzr
-    mov x7, xzr
-    mov x8, xzr
-    mov x9, xzr
-    mov x10, xzr
-    mov x11, xzr
-    mov x12, xzr
-    mov x13, xzr
-    mov x14, xzr
-    mov x15, xzr
-    mov x16, xzr
-    mov x17, xzr
-    mov x18, xzr
-    mov x19, xzr
-    mov x20, xzr
-    mov x21, xzr
-    mov x22, xzr
-    mov x23, xzr
-    mov x24, xzr
-    mov x25, xzr
-    mov x26, xzr
-    mov x27, xzr
-    mov x28, xzr
-    mov x29, xzr
-    mov x30, xzr
 
     bl _main
     /* Not reached */
 
-    /* Not cpu0? */
-Lnot_cpu0:
-    b _spin_forever
-
     /* Not booted into EL2? */
 Lnot_el2:
     b _spin_forever
+
+Lnot_cpu0:
+    /* Wait for sev from cpu0 */
+    wfe
+    CLEAR_X5_TO_X30
+    bl _othercore_entryp
+    /* Not reached */
 
 _spin_forever:
     b .
@@ -329,7 +331,7 @@ Lzero_loop_64:
     b.ne Lzero_loop_64
     ret
 
-    /* Given a mask of VM protections, return the equivalent TTE protections.
+    /* Given VM protections, return the equivalent TTE protections.
         Parameters:
             w0: VM permissions
             x1: pointer to PXN bit, will get set according to x0
@@ -840,3 +842,7 @@ _transtest_read:
     isb sy
     mrs x0, par_el1
     ret
+
+.align 3
+.global g_bootargs
+g_bootargs: .space 0x30
