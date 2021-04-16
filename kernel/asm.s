@@ -1,6 +1,35 @@
 .section .text
 .align 2
 
+    /* TODO: disable interrupts for the at routines */
+.global at_s1e1r
+at_s1e1r:
+    at s1e1r, x0
+    isb sy
+    mrs x0, par_el1
+    ret
+
+.global at_s1e1w
+at_s1e1w:
+    at s1e1w, x0
+    isb sy
+    mrs x0, par_el1
+    ret
+
+.global at_s1e0r
+at_s1e0r:
+    at s1e0r, x0
+    isb sy
+    mrs x0, par_el1
+    ret
+
+.global at_s1e0w
+at_s1e0w:
+    at s1e0w, x0
+    isb sy
+    mrs x0, par_el1
+    ret
+
 .global curcpu
 curcpu:
     mrs x0, mpidr_el1

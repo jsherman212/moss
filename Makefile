@@ -7,7 +7,13 @@ ROOT_DIR = $(shell pwd)
 
 AS = $(PREFIX)-as
 CC = $(PREFIX)-gcc
+
 CFLAGS = -ffreestanding -nostdlib -nostartfiles -I$(ROOT_DIR)/include
+
+ifeq ($(MOSS_DEBUG), 1)
+	CFLAGS += -DMOSS_DEBUG
+endif
+
 LD = $(PREFIX)-ld
 LDFLAGS = -z max-page-size=4096 -z common-page-size=4096
 LDFLAGS += -T ./linkscript.x

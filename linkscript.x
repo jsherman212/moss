@@ -2,8 +2,6 @@ SECTIONS {
     /* Kernel is mapped from VA 0xffffff8000000000 upward once the MMU
         enable bit is set in SCTLR_EL1 */
     . = 0xffffff8000000000;
-/* Keep at 0 for testing */
-    /* . = 0x0; */
 
     kernel_begin = .;
 
@@ -64,12 +62,7 @@ SECTIONS {
         kernel VA base to 0xffffffffffffffff only takes a couple of MB,
         so to keep things simple, we'll keep doing that. */
     kernel_level2_table = .;
-    /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) / 8; */
-    /* . += ((0xffffffffffffffff - kernel_begin) / 0x40000000) * 0x1000; */
     . += ((0xffffffffffffffff - kernel_begin) / 0x40000000) * 0x1000;
-    /* Below for when we are not rebased to VA_KERNEL_BASE */
-    /* . += ((0xffffffffffffffff - 0xffffff8000000000) / 0x40000000) * 0x1000; */
-    /*. += 0x1000;*/
     . = ALIGN(0x1000);
 
     /* Each entry here represents 4kb. However, if we map the pagetables
@@ -82,19 +75,11 @@ SECTIONS {
         This intentionally only takes into account the contiguous region
         text - end of stacks represents */
     kernel_level3_table = .;
-    /* . += ((0xffffffffffffffff - kernel_begin) / 0x1000) / 8; */
-    /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) * 0x1000; */
-    /* Below for when we are not rebased to VA_KERNEL_BASE */
-    /*. += ((0xffffffffffffffff - 0xffffff8000000000) / 0x200000) * 0x1000;*/
     /* +1 is to include the page when the divide evaluates to zero */
     . += (((stacks_end - kernel_begin) / 0x200000) + 1) * 0x1000;
-    /* . += ((0xffffffffffffffff - kernel_begin) / 0x200000) * 0x1000; */
     . = ALIGN(0x1000);
 
     static_pagetables_end = .;
-
-    kernel_end = .;
-    kernel_heap_start = .;
 
     /DISCARD/ : {
         *(*.eh_frame*)

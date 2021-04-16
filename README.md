@@ -17,6 +17,17 @@ enable_uart=1
 core_freq_min=500
 ```
 
+### Features
+- UART
+- Kernel virtual address space mapped from `0xffffff8000000000` upwards
+
+### TODO
+- Kernel ASLR
+- Locks
+- Multicore
+- Framebuffer
+- Userspace
+
 ### Resources Used
 #### UART
 https://s-matyukevich.github.io/raspberry-pi-os/docs/lesson01/rpi-os.html
