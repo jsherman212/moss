@@ -22,6 +22,7 @@ struct bootargs {
     uint64_t freephys;
 };
 
-extern struct bootargs *g_bootargs;
+extern struct bootargs g_bootargs;
+extern struct bootargs *g_bootargsp;
 
 #endif

@@ -36,15 +36,43 @@ curcpu:
     and x0, x0, #0xff
     ret
 
+.global delay_ticks
+delay_ticks:
+    subs x0, x0, #0x1
+    cbnz x0, delay_ticks
+    ret
+
 .global getel
 getel:
     mrs x0, CurrentEL
     lsr x0, x0, #0x2
     ret
 
+/* TODO: disable interrupts for the SP routines */
+.global get_sp_el0
+get_sp_el0:
+    mrs x1, SPSel
+    msr SPSel, #0
+    mov x0, sp
+    msr SPSel, x1
+    ret
+
+.global get_sp_elx
+get_sp_elx:
+    mrs x1, SPSel
+    msr SPSel, #1
+    mov x0, sp
+    msr SPSel, x1
+    ret
+
 .global read_ttbr1
 read_ttbr1:
     mrs x0, ttbr1_el1
+    ret
+
+.global send_event
+send_event:
+    sev
     ret
 
 .global spin_forever

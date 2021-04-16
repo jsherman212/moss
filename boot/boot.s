@@ -40,6 +40,17 @@
     ldr x19, [sp]
 .endm
 
+/* https://github.com/raspberrypi/tools/blob/master/armstubs/armstub8.S */
+.macro KICKSTART_CPU cpunum, s1, s2
+    mov \s1, \cpunum
+    sub \s1, \s1, #0x1
+    adr \s2, cpu1_entrypoint_phys
+    add \s2, \s2, \s1, lsl #0x3
+    ldr \s1, [\s2]
+    adr \s2, _start
+    str \s2, [\s1]
+.endm
+
 .macro CLEAR_X5_TO_X30
     mov x5, xzr
     mov x6, xzr
@@ -235,6 +246,12 @@ Lel2_entry:
     bl _early_kvtophys
     str x0, [x20, #0x20]
 
+    /* Get the other CPUs up and running, cpu0 decides when to
+    kick them out of their low power state */
+    KICKSTART_CPU 1 x0, x1
+    KICKSTART_CPU 2 x0, x1
+    KICKSTART_CPU 3 x0, x1
+
     dsb sy
     isb sy
 
@@ -264,7 +281,7 @@ Lel1_entry:
     ldp xzr, x1, [sp], #0x10
     ldp x2, x3, [sp], #0x10
 
-    ldr x0, =g_bootargs
+    adr x0, g_bootargs
 
     CLEAR_X5_TO_X30
 
@@ -278,8 +295,75 @@ Lnot_el2:
     b _spin_forever
 
 Lnot_cpu0:
+    ldr x0, =Lnot_cpu0_el1_entry
+    msr elr_el2, x0
+
+    mov x0, #0x3c4
+    msr spsr_el2, x0
+
+    mov x0, #(1 << 31)
+    msr hcr_el2, x0
+
+    mrs x0, cpacr_el1
+    orr x0, x0, #0x300000
+    msr cpacr_el1, x0
+
+    ldr x0, =ExceptionVectorsBase
+    msr vbar_el1, x0
+
+    mov x0, #0xff
+    msr mair_el1, x0
+
+    mov x0, #0x19
+    movk x0, #0x8019, lsl #16
+    msr tcr_el1, x0
+
+    adr x0, kernel_level1_table
+    msr ttbr1_el1, x0
+
+    mov x0, #0x100d
+    orr x0, x0, #(1 << 19)
+    msr sctlr_el1, x0
+
+    dsb sy
+    isb sy
+    tlbi vmalle1
+    isb sy
+
+    eret
+
+Lnot_cpu0_el1_entry:
+    mrs x0, mpidr_el1
+    and x0, x0, #0xff
+
+    /* Subtract one so we can calculate the correct stack pointers */
+    sub x0, x0, #1
+
+    ldr x1, =cpu1_stack
+    mov x2, PAGE_SIZE
+    lsl x2, x2, #0x1
+    mul x2, x2, x0
+    add x1, x1, x2
+    add x2, x1, PAGE_SIZE
+
+    /* x1 = bottom of regular stack for this CPU
+       x2 = bottom of exception stack for this CPU */
+    add x1, x1, PAGE_SIZE
+    add x2, x2, PAGE_SIZE
+
+    msr SPSel, #1
+    mov sp, x2
+
+    msr SPSel, #0
+    mov sp, x1
+
     /* Wait for sev from cpu0 */
     wfe
+    mov x0, xzr
+    mov x1, xzr
+    mov x2, xzr
+    mov x3, xzr
+    mov x4, xzr
     CLEAR_X5_TO_X30
     bl _othercore_entryp
     /* Not reached */
@@ -837,12 +921,11 @@ _early_kvtophys:
     add x0, x1, PA_KERNEL_BASE
     ret
 
-_transtest_read:
-    at s1e1r, x0
-    isb sy
-    mrs x0, par_el1
-    ret
-
 .align 3
 .global g_bootargs
 g_bootargs: .space 0x30
+
+/* https://github.com/raspberrypi/tools/blob/master/armstubs/armstub8.S */
+cpu1_entrypoint_phys: .dword 0xe0
+cpu2_entrypoint_phys: .dword 0xe8
+cpu3_entrypoint_phys: .dword 0xf0

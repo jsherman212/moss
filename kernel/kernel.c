@@ -9,13 +9,20 @@
 
 #include "asm.h"
 
-/* struct bootargs *g_bootargs = NULL; */
+struct bootargs *g_bootargsp = &g_bootargs;
 
 static uint64_t g_shared = 0;
 
-__attribute__ ((noreturn)) void _othercore_entryp(struct bootargs *args){
+static uint64_t tickarray[] = { 1000000000, 2000000000, 3000000000 };
+
+__attribute__ ((noreturn)) void _othercore_entryp(void){
+    delay_ticks(tickarray[curcpu()-1]);
+
     uart_printf("cpu %d alive on EL%d\r\n", curcpu(), getel());
-    dump_bootargs(args);
+    dump_bootargs(g_bootargsp);
+
+    uart_printf("cpu%d sp_el0 %#llx sp_elx %#llx\r\n", curcpu(),
+            get_sp_el0(), get_sp_elx());
 
     for(;;){
         g_shared++;
@@ -24,30 +31,23 @@ __attribute__ ((noreturn)) void _othercore_entryp(struct bootargs *args){
     __builtin_unreachable();
 }
 
-void kickstart_other_cores(void);
-
-/* Kick the other cores out of the WFE sleep */
-asm(".align 2\n"
-    ".global kickstart_other_cores\n"
-    "kickstart_other_cores:\n"
-    "sev\n"
-    "ret\n"
-    );
-
 /* cpu0 is always the only CPU that executes _main */
 __attribute__ ((noreturn)) void _main(struct bootargs *args, void *arg1,
         void *arg2, void *arg3){
-    /* g_bootargs = args; */
-
     uart_init();
     uart_puts("-------------");
     uart_printf("moss, on cpu %d, EL%d\n\r", curcpu(), getel());
 
+    uart_printf("cpu%d sp_el0 %#llx sp_elx %#llx\r\n", curcpu(),
+            get_sp_el0(), get_sp_elx());
     /* dump_kva_space(); */
 
     dump_bootargs(args);
+    dump_bootargs(g_bootargsp);
 
-    /* kickstart_other_cores(); */
+    /* Kernel bootstrapping complete, kick the other CPUs out of their
+     * low power state */
+    send_event();
 
     for(;;){
         char input[0x200];
