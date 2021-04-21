@@ -174,6 +174,7 @@ Lel2_entry:
     early_map_range data_start data_end VM_PROT_READ|VM_PROT_WRITE 0 0
     early_map_range bss_start bss_end VM_PROT_READ|VM_PROT_WRITE 0 0
     early_map_range stacks_start stacks_end VM_PROT_READ|VM_PROT_WRITE 0 0
+    early_map_range mailbox_page mailbox_page_end VM_PROT_READ|VM_PROT_WRITE 0 1
 
     /* Map the pagetables for static kernel memory so we can create
     new mappings after the MMU is enabled */

@@ -1,4 +1,5 @@
-TARGET_DIRS = libc vm
+# Ordered by "most important first"
+TARGET_DIRS = locks libc vm fb
 
 ASM_SOURCES = $(wildcard *.s)
 C_SOURCES = $(wildcard *.c)

@@ -2,14 +2,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <asm.h>
 #include <debug.h>
 #include <libc/string.h>
 #include <uart.h>
+#include <vm/vm.h>
 #include <vm/vm_constants.h>
 #include <vm/vm_prot.h>
-#include <vm/vm.h>
-
-#include "asm.h"
 
 void dump_bootargs(struct bootargs *args){
     MOSSDBG("bootargs:\r\n"

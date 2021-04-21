@@ -1,7 +1,9 @@
 #ifndef DEBUG
 #define DEBUG
 
+#include <stddef.h>
 #include <kernel.h>
+#include <uart.h>
 
 #ifdef MOSS_DEBUG
 #define MOSSDBG(fmt, args...) do { uart_printf(fmt, ##args); } while (0)

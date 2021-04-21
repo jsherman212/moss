@@ -50,6 +50,10 @@ SECTIONS {
 
     stacks_end = .;
 
+    mailbox_page = .;
+    . += 0x1000;
+    mailbox_page_end = .;
+
     static_pagetables_start = .;
 
     /* Each entry here represents 1gb, in total one level 1 table

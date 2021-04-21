@@ -13,17 +13,25 @@ gpu_mem=256
 arm_64bit=1
 
 enable_uart=1
+
+core_freq_min=500
+
+hdmi_group=1
+
+hdmi_mode=16
 ```
 
 ### Features
 - UART
 - Kernel virtual address space mapped from `0xffffff8000000000` upwards
+    - MMIO mapped from `0xffffff80fc000000`
+- Framebuffer
+- Lock types:
+    - simple spinlock
 
 ### TODO
 - Kernel ASLR
-- Locks
 - Multicore
-- Framebuffer
 - Userspace
 
 ### Resources Used
@@ -31,3 +39,12 @@ enable_uart=1
 https://s-matyukevich.github.io/raspberry-pi-os/docs/lesson01/rpi-os.html
 
 https://isometimes.github.io/rpi4-osdev/part3-helloworld/
+
+#### Framebuffer
+https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
+
+https://isometimes.github.io/rpi4-osdev/part5-framebuffer/
+
+http://www.abbeycatuk.info/2017/03/06/the-raspberry-pis-videocore-iv/
+
+https://github.com/raspberrypi/documentation/blob/JamesH65-mailbox_docs/configuration/mailboxes/accessing.md

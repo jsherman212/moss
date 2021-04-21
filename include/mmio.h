@@ -37,4 +37,12 @@
 #define rAUX_MU_CNTL_REG            *(volatile uint32_t *)(AUX_BASE + 0x60)
 #define rAUX_MU_BAUD_REG            *(volatile uint32_t *)(AUX_BASE + 0x68)
 
+/* https://github.com/raspberrypi/documentation/blob/JamesH65-mailbox_docs/configuration/mailboxes/accessing.md */
+#define MBX_BASE                    (MMIO_VA_BASE + 0x200b880)
+
+#define rMBX_READ                   *(volatile uint32_t *)(MBX_BASE)
+#define rMBX_STATUS                 *(volatile uint32_t *)(MBX_BASE + 0x18)
+#define rMBX_WRITE                  *(volatile uint32_t *)(MBX_BASE + 0x20)
+#define rMBX_STATUS1                *(volatile uint32_t *)(MBX_BASE + 0x38)
+
 #endif

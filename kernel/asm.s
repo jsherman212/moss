@@ -36,6 +36,11 @@ curcpu:
     and x0, x0, #0xff
     ret
 
+.global current_thread
+current_thread:
+    mrs x0, tpidr_el0
+    ret
+
 .global delay_ticks
 delay_ticks:
     subs x0, x0, #0x1
