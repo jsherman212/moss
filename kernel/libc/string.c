@@ -48,3 +48,12 @@ char *strcpy(char *dest, const char *src){
     /* Who cares about strcpy return value */
     return dest;
 }
+
+size_t strlen(char *s){
+    char *p = s;
+
+    while(*p)
+        p++;
+
+    return p - s;
+}

@@ -14,6 +14,14 @@ ifeq ($(MOSS_DEBUG), 1)
 	CFLAGS += -DMOSS_DEBUG
 endif
 
+ifeq ($(VM_DEBUG), 1)
+	CFLAGS += -DVM_DEBUG
+endif
+
+ifeq ($(FB_DEBUG), 1)
+	CFLAGS += -DFB_DEBUG
+endif
+
 LD = $(PREFIX)-ld
 LDFLAGS = -z max-page-size=4096 -z common-page-size=4096
 LDFLAGS += -T ./linkscript.x

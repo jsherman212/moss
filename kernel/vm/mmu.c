@@ -70,7 +70,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
     if(!(prot & VM_PROT_READ))
         panic("%s: VM_PROT_READ is required", __func__);
 
-    MOSSDBG("%s: va %#llx pa %#llx sz %#llx prot %#x device? %d"
+    VMDBG("%s: va %#llx pa %#llx sz %#llx prot %#x device? %d"
             " overwrite? %d block mappings allowed? %d\r\n", __func__,
             va, pa, sz, prot, device, overwrite, blocks_allowed);
 
@@ -82,7 +82,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
     if(!(va & 0x1fffff) && !(pa & 0x1fffff) && sz >= 0x200000)
         nblocks = sz / 0x200000;
 
-    MOSSDBG("%s: nblocks %lld\r\n", __func__, nblocks);
+    VMDBG("%s: nblocks %lld\r\n", __func__, nblocks);
 
     uint64_t start = va;
     uint64_t end = start + sz;
@@ -92,7 +92,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
     uint8_t xn_bit;
     uint32_t tte_prot = vm_prot_to_tte_prot(prot, &xn_bit);
 
-    MOSSDBG("%s: TTE prot %d XN bit %d\r\n", __func__, tte_prot, xn_bit);
+    VMDBG("%s: TTE prot %d XN bit %d\r\n", __func__, tte_prot, xn_bit);
 
     /* Normal memory: 0, device memory: 1 */
     uint32_t attridx = device;
@@ -104,7 +104,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
         uint64_t l1_idx = (curva >> ARM_4K_L1_SHIFT) & ARM_4K_INDEX_MASK;
         uint64_t *l1_ttep = (uint64_t *)(l1_tbl + (l1_idx * 0x8));
 
-        MOSSDBG("%s: curva %#llx: l1 idx %lld l1 ttep %#llx (%#llx)\r\n",
+        VMDBG("%s: curva %#llx: l1 idx %lld l1 ttep %#llx (%#llx)\r\n",
                 __func__, curva, l1_idx, (uint64_t)l1_ttep, *l1_ttep);
 
         if(*l1_ttep == ARM_TTE_EMPTY){
@@ -124,7 +124,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
             asm volatile("dsb sy");
             asm volatile("isb sy");
 
-            MOSSDBG("%s: created 1GB L1 entry for %#llx at %#llx:"
+            VMDBG("%s: created 1GB L1 entry for %#llx at %#llx:"
                     " %#llx\r\n", __func__, curva, (uint64_t)l1_ttep,
                     *l1_ttep);
         }
@@ -133,7 +133,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
         uint64_t l2_idx = (curva >> ARM_4K_L2_SHIFT) & ARM_4K_INDEX_MASK;
         uint64_t *l2_ttep = (uint64_t *)(l2_tbl + (l2_idx * 0x8));
 
-        MOSSDBG("%s: curva %#llx: l2 idx %lld l2 table %#llx l2 ttep %#llx"
+        VMDBG("%s: curva %#llx: l2 idx %lld l2 table %#llx l2 ttep %#llx"
                 " (%#llx)\r\n", __func__, curva, l2_idx, l2_tbl,
                 (uint64_t)l2_ttep, *l2_ttep);
 
@@ -160,7 +160,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
             asm volatile("dsb sy");
             asm volatile("isb sy");
 
-            MOSSDBG("%s: created 2MB L2 block mapping for %#llx at %#llx:"
+            VMDBG("%s: created 2MB L2 block mapping for %#llx at %#llx:"
                     " %#llx\r\n", __func__, curva, (uint64_t)l2_ttep,
                     *l2_ttep);
 
@@ -182,14 +182,14 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
             asm volatile("dsb sy");
             asm volatile("isb sy");
 
-            MOSSDBG("%s: created 2MB L2 entry for %#llx at %#llx:"
+            VMDBG("%s: created 2MB L2 entry for %#llx at %#llx:"
                     " %#llx\r\n", __func__, curva, (uint64_t)l2_ttep,
                     *l2_ttep);
         }
 
         uint64_t l3_tbl = linear_phystokv(*l2_ttep & ARM_4K_TABLE_MASK);
 
-        MOSSDBG("%s: curva %#llx: l3 tbl %#llx\r\n", __func__, curva, l3_tbl);
+        VMDBG("%s: curva %#llx: l3 tbl %#llx\r\n", __func__, curva, l3_tbl);
 
         /* This could be the beginning of a new, unmapped level 3
          * page, so let's quickly test if it's here and map it if
@@ -198,7 +198,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
          * XXX when I get a memory manager going next_free_phys_page
          * will be replaced with a call to palloc */
         if(at_s1e1r((uint64_t)l3_tbl) & 1){
-            MOSSDBG("%s: unmapped L3 page at kv %#llx, mapping it\r\n",
+            VMDBG("%s: unmapped L3 page at kv %#llx, mapping it\r\n",
                     __func__, l3_tbl);
 
             if(!map_range_internal(l3_tbl, next_free_phys_page, PAGE_SIZE,
@@ -206,7 +206,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
                 panic("%s: failed to map new page of L3", __func__);
             }
 
-            MOSSDBG("%s: mapped new L3 page at %#llx\r\n", __func__, l3_tbl);
+            VMDBG("%s: mapped new L3 page at %#llx\r\n", __func__, l3_tbl);
 
             bzero((void *)l3_tbl, PAGE_SIZE);
 
@@ -216,7 +216,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
         uint64_t l3_idx = (curva >> ARM_4K_L3_SHIFT) & ARM_4K_INDEX_MASK;
         uint64_t *l3_ptep = (uint64_t *)(l3_tbl + (l3_idx * 0x8));
 
-        MOSSDBG("%s: curva %#llx: l3 idx %lld l3 table %#llx l3 ptep %#llx"
+        VMDBG("%s: curva %#llx: l3 idx %lld l3 table %#llx l3 ptep %#llx"
                 " (%#llx)\r\n", __func__, curva, l3_idx, l3_tbl,
                 (uint64_t)l3_ptep, *l3_ptep);
 
@@ -240,7 +240,7 @@ static bool map_range_internal(uint64_t va, uint64_t pa, uint64_t sz,
         asm volatile("dsb sy");
         asm volatile("isb sy");
 
-        MOSSDBG("%s: created 4KB mapping for %#llx at %#llx:"
+        VMDBG("%s: created 4KB mapping for %#llx at %#llx:"
                 " %#llx\r\n", __func__, curva, (uint64_t)l3_ptep,
                 *l3_ptep);
 

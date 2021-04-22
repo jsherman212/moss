@@ -5,6 +5,7 @@
 #include <debug.h>
 #include <fb/fb.h>
 #include <kernel.h>
+#include <libc/string.h>
 #include <locks/spinlock.h>
 #include <panic.h>
 #include <uart.h>
@@ -56,7 +57,20 @@ __attribute__ ((noreturn)) void _main(struct bootargs *args, void *arg1,
      * low power state */
     /* send_event(); */
 
-    for(;;);
+    /* Drop into a shell. XXX: this will first be a 'task' once I
+     * get a scheduler set up, then a userspace program that uses
+     * system calls one I get those two things set up */
+    for(;;){
+        fb_printf("moss> ");
+
+        char input[0x200];
+        fb_gets_with_echo(input, sizeof(input));
+        hexdump(input, strlen(input));
+        size_t inputlen = strlen(input);
+        /* Delete newline */
+        input[inputlen - 1] = '\0';
+        fb_printf("\nYou entered '%s'\n", input);
+    }
 
     /* for(;;){ */
     /*     char input[0x200]; */
