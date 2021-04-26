@@ -61,7 +61,7 @@ __attribute__ ((noreturn)) void _main(struct bootargs *args, void *arg1,
      * get a scheduler set up, then a userspace program that uses
      * system calls one I get those two things set up */
     for(;;){
-        fb_printf("moss> ");
+        fb_printf("> ");
 
         char input[0x200];
         fb_gets_with_echo(input, sizeof(input));
@@ -71,13 +71,6 @@ __attribute__ ((noreturn)) void _main(struct bootargs *args, void *arg1,
         input[inputlen - 1] = '\0';
         fb_printf("\nYou entered '%s'\n", input);
     }
-
-    /* for(;;){ */
-    /*     char input[0x200]; */
-    /*     uart_gets_with_echo_unlocked(input, sizeof(input)); */
-    /*     input[sizeof(input) - 1] = '\0'; */
-    /*     uart_printf("\n\r\nYou typed: %s\r\n", input); */
-    /* } */
 
     __builtin_unreachable();
 }

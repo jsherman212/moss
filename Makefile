@@ -8,7 +8,7 @@ ROOT_DIR = $(shell pwd)
 AS = $(PREFIX)-as
 CC = $(PREFIX)-gcc
 
-CFLAGS = -ffreestanding -nostdlib -nostartfiles -I$(ROOT_DIR)/include
+CFLAGS = -ffreestanding -nostdlib -nostartfiles -I$(ROOT_DIR)/include -O3
 
 ifeq ($(MOSS_DEBUG), 1)
 	CFLAGS += -DMOSS_DEBUG
